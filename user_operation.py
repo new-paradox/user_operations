@@ -42,7 +42,6 @@ class UserOperation:
                 operations = json.load(json_file)
                 for operation in operations:
                     self.prepare_data(operation)
-            print(self.total_data)
         except FileNotFoundError as exc:
             print(f'json file not found {exc} type {type(exc)}')
 
@@ -170,7 +169,6 @@ if __name__ == '__main__':
     args = manager.parse_args()
     parser = UserOperation(src=args.src, path_to_no_validate=args.bad_log)
     parser.run_script()
-
 
 # Примеры запуска:
 # python3 user_operation.py -S 'operations.json'
