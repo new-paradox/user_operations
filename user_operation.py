@@ -31,7 +31,7 @@ class UserOperation:
         """
         Читает json файл
         выполняет normpath_to_dir
-        отдает данные manage_data
+        отдает данные prepare_data
         :return: None
         """
         try:
