@@ -146,7 +146,7 @@ class UserOperation:
         """
         скрывает номер счет получателя
         :param number_to: <str> Счет 48943806953649539453
-        :return: <str> **4894
+        :return: <str> **9453
         """
         return ''.join(re.findall(r"[\D]", number_to)) + '**' + ''.join(re.findall(r"[\d]", number_to))[-4:]
 
