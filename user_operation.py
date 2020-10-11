@@ -148,7 +148,7 @@ class UserOperation:
         :param number_to: <str> Счет 48943806953649539453
         :return: <str> **4894
         """
-        return ''.join(re.findall(r"[\D]", number_to)) + '**' + ''.join(re.findall(r"[\d]", number_to))[:4]
+        return ''.join(re.findall(r"[\D]", number_to)) + '**' + ''.join(re.findall(r"[\d]", number_to))[-4:]
 
     def run_script(self):
         """
