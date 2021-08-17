@@ -1,175 +1,196 @@
 # -*- coding: utf-8 -*-
-# python 3.8.5
 
+from dataclasses import dataclass
+from typing import List
 import re
 from datetime import datetime
-import os
-import argparse
 import json
+from operator import attrgetter
 
 
-class UserOperation:
+@dataclass
+class BaseCurrency:
     """
-    Скрипт на вход принимает путь до json файла
-    Считывает операции пользователя
-    Выводит на экран список из 5 последних совершенных
-    (выполненных) операций клиента
+    Описание и типизация базового класса currency - вложенного словаря
+    объекта BaseOperationAmount;
+    """
+    name: str
+    code: str
+
+
+@dataclass
+class BaseOperationAmount:
+    """
+    Описание и типизация базового класса operationAmount - вложенного словаря
+    объекта BaseOperation;
+    """
+    amount: str
+    currency: BaseCurrency
+
+
+@dataclass
+class BaseOperation:
+    """
+    Описание и типизация базового класса палтежной операции;
+    """
+    id: int
+    state: str
+    date: datetime
+    operation_amount: BaseOperationAmount
+    description: str
+    from_card: str
+    to_card: str
+
+
+class Currency(BaseCurrency):
+    """
+    Инициализация объекта Currency;
     """
 
-    def __init__(self, src, path_to_no_validate=None):
-        """
+    def __init__(self, currency):
+        self.code = currency['code']
+        self.name = currency['name']
 
-        :param src: путь к json
-        :param path_to_no_validate: по умолчанию None, опциональный аргумент,
-        путь к файлу с трассировкой ошибок переданных данных в json
-        """
-        self.src = os.path.normpath(src)
-        self.total_data = []  # [[('2019-08-26T10:50:58.294041', {'description': 'Перевод организации',..),..]
-        self.path_to_no_validate = path_to_no_validate
 
-    def read_file(self):
-        """
-        Читает json файл
-        выполняет normpath_to_dir
-        отдает данные prepare_data
-        :return: None
-        """
-        try:
-            self.normpath_to_dir()
-            if not self.src.endswith('.json'):
-                raise FileNotFoundError
-            with open(self.src, 'r') as json_file:
-                operations = json.load(json_file)
-                for operation in operations:
-                    self.prepare_data(operation)
-        except FileNotFoundError as exc:
-            print(f'json file not found {exc} type {type(exc)}')
+class OperationAmount(BaseOperationAmount):
+    """
+    Инициализация объекта OperationAmount;
+    """
 
-    def normpath_to_dir(self):
-        """
-        если опциональный аргумент есть -> нормализует путь
-        :return: None
-        """
-        if self.path_to_no_validate:
-            self.path_to_no_validate = os.path.normpath(self.path_to_no_validate)
+    def __init__(self, operation_amount):
+        self.amount = operation_amount['amount']
+        self.currency = Currency(operation_amount['currency'])
 
-    def prepare_data(self, operation):
-        """
-        Подготавливает данные к обработке, извлекая их из operation
-        проверяет условие выполнения операции
-        В обработке исключения пишет в лог невалидные данные, если путь передан
-        :param operation: {'id': 441945886, 'state': 'EXECUTED',..'}
-        :return: None
-        """
-        try:
-            if 'state' in operation:
-                if operation['state'] != "EXECUTED":
-                    raise ValueError(f'no validate {operation}')
-                else:
-                    if 'from' not in operation:
-                        operation_from = 'No data'
-                    else:
-                        operation_from = operation['from']
-                        data_operation = operation['date']
-                        description = operation['description']
-                        operation_to = operation['to']
-                        operation_amount = operation['operationAmount']
-                        operation_amount_sum = operation_amount['amount']
-                        code = operation_amount['currency']['name']
-                        self.total_data.append(
-                            (data_operation,
-                             {'description': description,
-                              'operation_from': operation_from,
-                              'operation_to': operation_to,
-                              'operation_amount_sum': operation_amount_sum,
-                              'code': code}
-                             ))
-            else:
-                raise ValueError(f'no validate {operation}')
 
-        except (ValueError, KeyError) as exc:
-            if self.path_to_no_validate:
-                with open(self.path_to_no_validate, "a", encoding='utf-8') as log_file:
-                    log_file.write(f'Поймано исключение {exc} тип {type(exc)} \n')
+class Operation(BaseOperation):
+    """
+    Инициализация объекта Operation;
+    """
 
-    def sorted_all_data(self):
-        """
-        сортирует sel.total_data по дате и времени
-        :return: None
-        """
-        self.total_data = sorted(self.total_data, reverse=True)
+    def __init__(self, operation):
+        self.id = operation['id']
+        self.state = operation['state']
+        self.date = datetime.fromisoformat(operation['date'])
+        self.operation_amount = OperationAmount(operation['operationAmount'])
+        self.description = operation['description']
+        self.from_card = operation['from']
+        self.to_card = operation['to']
 
-    def display(self):
-        """
-        Выводит на консоль 5 последних выполненных операций
-        Выводит сумму и код денежных единиц
-        Форматирует дату reformat_data_time(data_time)
-        скрывает номер счета отправителя hide_number_from
-        скрывает номер счет получателя hide_number_to
-        :return:
-        """
-        for index, (data_time, other) in enumerate(self.total_data):
-            if index == 5:
-                break
-            data_time = self.reformat_data_time(data_time)
-            number_to = self.hide_number_to(other["operation_to"])
-            number_from = self.hide_number_from(other["operation_from"])
-            print('')
-            print(f'{data_time} {other["description"]}')
-            print(f'{number_from} -> {number_to}')
-            print(f'{other["operation_amount_sum"]} {other["code"]}')
 
-    def reformat_data_time(self, data_time):
-        """
-        Форматирует дату
-        :param data_time: <str> 2018-08-19T04:27:37.904916
-        :return: <str> 19.08.2018
-        """
-        data_time = data_time[:-16].split('-')
-        data_time = datetime(year=int(data_time[0]), month=int(data_time[1]), day=int(data_time[2]))
-        return data_time.strftime("%d.%m.%Y")
+class View:
+    """
+    Объект служит для представления клиенту отформатированного ответа.
+    На вход принимает массив из валидированных объектов Operation ->
+    метод data_masking запускает цепочку методов, которые в рамках своей зоны отвесвтенности маскируют или
+    форматируют участки ответа клиенту;
 
-    def hide_number_from(self, number_from):
-        """
-        скрывает номер счета отправителя
-        :param number_from: <str> Visa Gold 7756673469642839
-        :return: <str> Visa Gold  7756 67** **** 2839
-        """
+    Пример ответа:
+    19.08.2018 Перевод организации
+    7756 67** **** 2839 -> **9453
+    31957.58 руб.
+
+    Методы:
+    data_masking - формирует окончательный ответ и запускает методы форматирования;
+    reformat_data_time - форматирует объект типа datetime в строковое представление прим. 19.08.2018;
+    hide_from - маскирует поле from в структуре данных прим. Visa Gold 7756 67** **** 2839;
+    hide_to - маскирует поле to в структуре данных прим. Счет **9453;
+    """
+
+    def __init__(self, operations: List[Operation]):
+        self.operations = operations
+
+    def data_masking(self) -> str:
+        result = ''
+        for operation in self.operations:
+            result += f'{self.reformat_data_time(date=operation.date)} {operation.description} \n' \
+                      f'{self.hide_from(number_from=operation.from_card)} -> ' \
+                      f'{self.hide_to(number_to=operation.to_card)}\n' \
+                      f'{operation.operation_amount.amount} {operation.operation_amount.currency.code}\n\n'
+        return result
+
+    @staticmethod
+    def reformat_data_time(date: datetime) -> str:
+        return datetime.strftime(date, '%d.%m.%Y')
+
+    @staticmethod
+    def hide_from(number_from: str) -> str:
         numbers = len(''.join(re.findall(r"[\d]", number_from))) - 10
         first = ''.join(re.findall(r"[\d]", number_from))[:6]
         last = ''.join(re.findall(r"[\d]", number_from))[-4:]
-        code = first + "*" * numbers + last
-        reformat_code = ' '.join([code[i:i + 4] for i in range(0, len(code), 4)])
-        return '{} {}'.format("".join(re.findall(r"[\D]", number_from)), reformat_code)
+        mask = first + "*" * numbers + last
+        reformat_code = ' '.join([mask[i:i + 4] for i in range(0, len(mask), 4)])
+        number_from = '{} {}'.format("".join(re.findall(r"[\D]", number_from)), reformat_code)
+        return number_from.replace('  ', ' ')
 
-    def hide_number_to(self, number_to):
-        """
-        скрывает номер счет получателя
-        :param number_to: <str> Счет 48943806953649539453
-        :return: <str> **9453
-        """
-        return ''.join(re.findall(r"[\D]", number_to)) + '**' + ''.join(re.findall(r"[\d]", number_to))[-4:]
-
-    def run_script(self):
-        """
-        Запуск скрипта
-        :return: None
-        """
-        self.read_file()
-        self.sorted_all_data()
-        self.display()
+    @staticmethod
+    def hide_to(number_to: str) -> str:
+        number_to = ''.join(re.findall(r"[\D]", number_to)) + '**' + ''.join(re.findall(r"[\d]", number_to))[-4:]
+        return number_to
 
 
-if __name__ == '__main__':
-    manager = argparse.ArgumentParser(description='Users operation')
-    manager.add_argument('-S', '--src', type=str, metavar='', help='input file')
-    manager.add_argument('-B', '--bad_log', type=str, metavar='', help='no validate operation directory',
-                         required=False)
+class Controller:
+    """
+    Controller обеспечивает связь между чтением файла, валидацией, сортировкой и форматированием данных:
+    Парсинг файла - read_json_file(json_file);
+    Валидация - validate_operations;
+    Сортировка - return_last_n_operation;
+    Форматирвоание и маскировка - View(self.last_n_operations).data_masking();
 
-    args = manager.parse_args()
-    parser = UserOperation(src=args.src, path_to_no_validate=args.bad_log)
-    parser.run_script()
+    Порядок работы скрипта:
+    При инициализации запрашивается путь до файла .json ->
+    И желаемое количество выведенных последних по дате операций count_row ->
+    Дескриптор json файла передается в self.file ->
 
-# Примеры запуска:
-# python3 user_operation.py -S 'operations.json'
-# python3 user_operation.py -S 'operations.json' -B 'bad.log'
+    validate_operations:
+    Формируется массив из объектов Operation, OperationAmount и Currency представляющие собой структуру данных ->
+    В случае если структура данных не соотвествует интерфейсу -> сработает try catch.
+    Валидация происходит по атрибуту структуры даных - state, где оно должно равняться "EXECUTED" - выполнено ->
+    Все валидные значения добавяться в массив operations ->
+
+    last_n_operations:
+    Производится сортировка и срез массива operations по количеству запрашиваемых последних по дате операций ->
+
+    masking_and_return_result:
+    Инициализируется объект View, он получает аргумент last_n_operations,
+    Где по заданному в View шаблону маскирует данные и возвращает строковый ответ.
+    """
+
+    def __init__(self, json_file: str, count_row: int):
+        self.file = read_json_file(json_file)
+        self.count_row = count_row
+        self.operations = self.validate_operations()
+        self.last_n_operations = self.return_last_n_operation()
+        self.masking_and_return_result = View(operations=self.last_n_operations).data_masking()
+
+    def __str__(self):
+        return self.masking_and_return_result
+
+    def validate_operations(self) -> List:
+        operations = []
+        for index, elem in enumerate(self.file):
+            try:
+                valid_elem = Operation(elem)
+                if valid_elem.state == "EXECUTED":
+                    operations.append(Operation(elem))
+
+            except LookupError as exc:
+                print(f'Возникла ошибка типа: {type(exc)} - {exc} в строке - {index + 1}')
+        return operations
+
+    def return_last_n_operation(self) -> List[Operation]:
+        result = sorted(self.operations, key=attrgetter('date'), reverse=True)[:self.count_row]
+        return result
+
+
+def read_json_file(src: str):
+    if not src.endswith('.json'):
+        raise FileNotFoundError
+    with open(src, 'r') as json_file:
+        file = json.load(json_file)
+        return file
+
+
+# if __name__ == '__main__':
+#     run = Controller(json_file='operations.json', count_row=5)
+#     total_operation = run.masking_and_return_result
+#     print(total_operation)
