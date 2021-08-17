@@ -4,15 +4,5 @@
 с определенной формой вывода
 
 Запуск скрипта:
-python3 user_operation.py -S 'operations.json'
+ python3 run_script.py -S operations.json -C 5
 
-или:
-python3 user_operation.py -S 'operations.json' -B 'bad.log'
-
-Если передать опциональный аргумент -B, указав путь, то
-в расположение прописанной директории запишется .log/.txt
-файл с трассировкой исключений
-Если не указать - логи писаться не будут
-
-Если указать неверный путь чтения -S json файла возникнет исключение
-FileNotFoundError
