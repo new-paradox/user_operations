@@ -8,5 +8,5 @@ if __name__ == '__main__':
     manager.add_argument('-C', '--count', type=int, metavar='', help='count of operation')
 
     args = manager.parse_args()
-    parser = user_operation.Controller(json_file=args.src, count_row=args.count).masking_and_return_result
+    parser = user_operation.Controller(json_file=args.src, count_row=args.count)
     print(parser)
