@@ -188,9 +188,3 @@ def read_json_file(src: str):
     with open(src, 'r') as json_file:
         file = json.load(json_file)
         return file
-
-
-# if __name__ == '__main__':
-#     run = Controller(json_file='operations.json', count_row=5)
-#     total_operation = run.masking_and_return_result
-#     print(total_operation)
