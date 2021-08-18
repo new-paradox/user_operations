@@ -163,7 +163,7 @@ class Controller:
         self.masking_and_return_result = View(operations=self.last_n_operations).data_masking()
 
     def __str__(self):
-        return View(operations=self.last_n_operations).data_masking()
+        return self.masking_and_return_result
 
     def validate_operations(self) -> List:
         operations = []
