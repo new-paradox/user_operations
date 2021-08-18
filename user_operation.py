@@ -86,7 +86,7 @@ class View:
 
     Пример ответа:
     19.08.2018 Перевод организации
-    7756 67** **** 2839 -> **9453
+    Visa Gold 7756 67** **** 2839 -> **9453
     31957.58 руб.
 
     Методы:
@@ -184,7 +184,7 @@ class Controller:
 
 def read_json_file(src: str):
     if not src.endswith('.json'):
-        raise FileNotFoundError
+        raise TypeError
     with open(src, 'r') as json_file:
         file = json.load(json_file)
         return file
